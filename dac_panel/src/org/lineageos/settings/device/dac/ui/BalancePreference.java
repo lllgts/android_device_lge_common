@@ -2,7 +2,9 @@ package org.lineageos.settings.device.dac.ui;
 
 
 import android.content.Context;
+import android.filterfw.geometry.Quad;
 import android.os.SystemProperties;
+import android.os.health.HealthKeys;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -15,18 +17,27 @@ import org.lineageos.settings.device.dac.R;
 import org.lineageos.settings.device.dac.utils.Constants;
 import org.lineageos.settings.device.dac.utils.QuadDAC;
 
+import java.util.Map;
+
+import vendor.lge.hardware.audio.dac.control.V1_0.FeatureStates;
+import vendor.lge.hardware.audio.dac.control.V1_0.HalFeature;
+import vendor.lge.hardware.audio.dac.control.V1_0.IDacAdvancedControl;
+import vendor.lge.hardware.audio.dac.control.V1_0.IDacHalControl;
+
 public class BalancePreference extends Preference {
 
     private static final String TAG = "BalancePreference";
 
-    private double left_balance = 0;
-    private double right_balance = 0;
+    private int left_balance = 0;
+    private int right_balance = 0;
 
-    private double max_allowed_value = 0;
-    private double min_allowed_value = -6;
+    private int max_allowed_value = 0;
+    private int min_allowed_value = -12;
 
     private Button bt_left_plus, bt_left_minus, bt_right_plus, bt_right_minus;
     private TextView tv_left, tv_right;
+
+    private IDacHalControl dhc;
 
     public BalancePreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
@@ -91,21 +102,19 @@ public class BalancePreference extends Preference {
                 updateRightBalance(false);
             }
         });
-
-        loadBalanceConfiguration();
-
     }
 
     private void loadBalanceConfiguration()
     {
-        int lb = SystemProperties.getInt(Constants.PROPERTY_LEFT_BALANCE, 0);
-        int rb = SystemProperties.getInt(Constants.PROPERTY_RIGHT_BALANCE,0);
+        try {
+            left_balance = QuadDAC.getLeftBalance(dhc);
+            right_balance = QuadDAC.getRightBalance(dhc);
+        } catch(Exception e) {
+            Log.d(TAG, "loadBalanceConfiguration: " + e.toString());
+        }
 
-        left_balance = Constants.balanceHashMapReverse.get(lb);
-        right_balance = Constants.balanceHashMapReverse.get(rb);
-
-        tv_left.setText(left_balance + " db");
-        tv_right.setText(right_balance + " db");
+        tv_left.setText(-((double)left_balance)/2 + " db");
+        tv_right.setText(-((double)right_balance)/2 + " db");
 
         if(left_balance == max_allowed_value)
         {
@@ -139,7 +148,7 @@ public class BalancePreference extends Preference {
         {
             if(left_balance < max_allowed_value)
             {
-                left_balance += 0.5;
+                left_balance += 1;
                 bt_left_minus.setEnabled(true);
                 if(left_balance == max_allowed_value)
                 {
@@ -150,7 +159,7 @@ public class BalancePreference extends Preference {
         } else {
             if(left_balance > min_allowed_value)
             {
-                left_balance -= 0.5;
+                left_balance -= 1;
                 bt_left_plus.setEnabled(true);
                 if(left_balance == min_allowed_value)
                 {
@@ -158,9 +167,13 @@ public class BalancePreference extends Preference {
                 }
             }
         }
-        sb.append(left_balance);
+        try {
+            QuadDAC.setLeftBalance(dhc, -left_balance);
+        } catch(Exception e) {
+            Log.d(TAG, "updateLeftBalance: " + e.toString());
+        }
+        sb.append(((double)left_balance)/2);
         sb.append(" db");
-        QuadDAC.setLeftBalance(Constants.balanceHashMap.get(left_balance));
         tv_left.setText(sb.toString());
     }
 
@@ -171,7 +184,7 @@ public class BalancePreference extends Preference {
         {
             if(right_balance < max_allowed_value)
             {
-                right_balance += 0.5;
+                right_balance += 1;
                 bt_right_minus.setEnabled(true);
                 if(right_balance == max_allowed_value)
                 {
@@ -182,7 +195,7 @@ public class BalancePreference extends Preference {
         } else {
             if(right_balance > min_allowed_value)
             {
-                right_balance -= 0.5;
+                right_balance -= 1;
                 bt_right_plus.setEnabled(true);
                 if(right_balance == min_allowed_value)
                 {
@@ -190,10 +203,29 @@ public class BalancePreference extends Preference {
                 }
             }
         }
-        sb.append(right_balance);
+        try {
+            QuadDAC.setRightBalance(dhc, -right_balance);
+        } catch(Exception e) {
+            Log.d(TAG, "updateRightBalance: " + e.toString());
+        }
+        sb.append(((double)right_balance)/2);
         sb.append(" db");
-        QuadDAC.setRightBalance(Constants.balanceHashMap.get(right_balance));
         tv_right.setText(sb.toString());
     }
 
+    public void initializeBalancePreference(IDacHalControl idhc) {
+        dhc = idhc;
+        try {
+            FeatureStates states = dhc.getSupportedHalFeatureValues(HalFeature.BalanceLeft);
+            min_allowed_value = (int)states.range.min;
+            max_allowed_value = (int)states.range.max;
+
+            Log.d(TAG, "min val: " + min_allowed_value + "; max val: " + max_allowed_value);
+
+        } catch(Exception e) {
+            Log.d(TAG, "initializeBalancePreference: " + e.toString());
+        }
+
+        loadBalanceConfiguration();
+    }
 }
