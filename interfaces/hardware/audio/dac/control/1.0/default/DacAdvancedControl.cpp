@@ -56,8 +56,6 @@ static T get(const std::string& path, const T& def) {
     return file.fail() ? def : result;
 }
 
-
-
 DacAdvancedControl::DacAdvancedControl() {
     
     for(const auto & entry : std::filesystem::directory_iterator(COMMON_ES9218_PATH)) {
@@ -69,20 +67,29 @@ DacAdvancedControl::DacAdvancedControl() {
             }
         }
     }
-    std::ofstream avc(mDacBasePath + AVC_VOLUME);
-    std::ofstream hifi(mDacBasePath + HIFI_MODE);
+    std::string avcPath = std::string(mDacBasePath);
+    avcPath.append(AVC_VOLUME);
+    std::string hifiPath = std::string(mDacBasePath);
+    avcPath.append(HIFI_MODE);
+
+    std::ofstream avc(avcPath);
+    std::ofstream hifi(hifiPath);
     
     if(mDacBasePath.empty()) {
         LOG(ERROR) << "DacAdvancedControl: No ES9218 path found, exiting...";
         return;
+    } else {
+        LOG(INFO) << "DacAdvancedControl: mDacBasePath: " << mDacBasePath;
     }
     
     if (avc) {
+        LOG(INFO) << "DacAdvancedControl: add avc feature";
         mSupportedAdvancedFeatures.push_back(AdvancedFeature::AVCVolume);
         writeAvcVolumeState(getAvcVolumeState());
     }
     
     if (hifi) {
+        LOG(INFO) << "DacAdvancedControl: add hifi feature";
         mSupportedAdvancedFeatures.push_back(AdvancedFeature::HifiMode);
         writeHifiModeState(getHifiModeState());
     }
@@ -90,6 +97,8 @@ DacAdvancedControl::DacAdvancedControl() {
 }
 
 Return<void> DacAdvancedControl::getSupportedAdvancedFeatures(getSupportedAdvancedFeatures_cb _hidl_cb) {
+    LOG(INFO) << "DacAdvancedControl: getSupportedAdvancedFeatures: mSupportedAdvancedFeatures.size: " << std::to_string(static_cast<int32_t>(mSupportedAdvancedFeatures.size()));
+
     _hidl_cb(mSupportedAdvancedFeatures);
 
     return Void();
@@ -149,8 +158,18 @@ bool DacAdvancedControl::writeHifiModeState(int32_t value) {
 }
 
 Return<bool> DacAdvancedControl::setFeatureValue(AdvancedFeature feature, int32_t value) {
-    
-    if(std::find(mSupportedAdvancedFeatures.begin(), mSupportedAdvancedFeatures.end(), feature) == mSupportedAdvancedFeatures.end()) {
+    LOG(INFO) << "DacAdvancedControl: setFeatureValue: " << std::to_string(static_cast<int32_t>(feature));
+
+    bool feature_available = false;
+    LOG(INFO) << "DacAdvancedControl: setFeatureValue: mSupportedAdvancedFeatures.size: " << std::to_string(static_cast<int32_t>(mSupportedAdvancedFeatures.size()));
+    for(AdvancedFeature f : mSupportedAdvancedFeatures) {
+        if(f == feature) {
+            LOG(INFO) << "DacAdvancedControl: setFeatureValue: feature found";
+            feature_available = true;
+            break;
+        }
+    }
+    if(!feature_available) {
         LOG(ERROR) << "DacAdvancedControl::setFeatureValue: tried to set value for unsupported Feature...";
         return false;
     }
@@ -183,8 +202,16 @@ int32_t DacAdvancedControl::getHifiModeState() {
 
 Return<int32_t> DacAdvancedControl::getFeatureValue(AdvancedFeature feature) {
     int32_t ret;
-    
-    if(std::find(mSupportedAdvancedFeatures.begin(), mSupportedAdvancedFeatures.end(), feature) == mSupportedAdvancedFeatures.end()) {
+
+    bool feature_available = false;
+    for(AdvancedFeature f : mSupportedAdvancedFeatures) {
+        if(f == feature) {
+            LOG(INFO) << "DacAdvancedControl: getFeatureValue: feature found";
+            feature_available = true;
+            break;
+        }
+    }
+    if(!feature_available) {
         LOG(ERROR) << "DacAdvancedControl::getFeatureValue: tried to get value for unsupported Feature...";
         return -1;
     }
