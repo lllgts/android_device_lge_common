@@ -42,6 +42,7 @@ public class QuadDACPanelFragment extends PreferenceFragment
     private HeadsetPluggedFragmentReceiver headsetPluggedFragmentReceiver;
 
     private IDacAdvancedControl dac;
+
     private IDacHalControl dhc;
 
     private ArrayList<Integer> dac_features;
@@ -50,7 +51,6 @@ public class QuadDACPanelFragment extends PreferenceFragment
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         getActivity().getActionBar().setDisplayHomeAsUpEnabled(true);
-        addPreferencesFromResource(R.xml.quaddac_panel);
         headsetPluggedFragmentReceiver = new HeadsetPluggedFragmentReceiver();
         try {
             dac = IDacAdvancedControl.getService(true);
@@ -61,6 +61,7 @@ public class QuadDACPanelFragment extends PreferenceFragment
         } catch(Exception e) {
             Log.d(TAG, "onCreatePreferences: " + e.toString());
         }
+        addPreferencesFromResource(R.xml.quaddac_panel);
     }
 
     @Override
@@ -174,11 +175,10 @@ public class QuadDACPanelFragment extends PreferenceFragment
                 digital_filter_list.setVisible(true);
                 digital_filter_list.setValueIndex(dhc.getFeatureValue(HalFeature.DigitalFilter));
             }
-            if (dhc_features.contains(HalFeature.BalanceLeft) && !dhc_features.contains(
-                    HalFeature.BalanceRight)) {
+            if (dhc_features.contains(HalFeature.BalanceLeft)
+                    && dhc_features.contains(HalFeature.BalanceRight)) {
                 balance_preference.setVisible(true);
-                Log.d(TAG, "Initializing Balance Preference");
-                balance_preference.initializeBalancePreference(dhc);
+                balance_preference.setDhc(dhc);
             }
             if (dac_features.contains(AdvancedFeature.AVCVolume)) {
                 avc_volume.setVisible(true);
@@ -186,8 +186,6 @@ public class QuadDACPanelFragment extends PreferenceFragment
                 avc_volume.setMin((int)range.min);
                 avc_volume.setMax((int)range.max);
                 avc_volume.setValue(dac.getFeatureValue(AdvancedFeature.AVCVolume));
-            } else {
-
             }
             if (dac_features.contains(AdvancedFeature.HifiMode)) {
                 mode_list.setVisible(true);
@@ -272,5 +270,7 @@ public class QuadDACPanelFragment extends PreferenceFragment
             }
         }
     }
+
+    public IDacHalControl getDhc() { return dhc; }
 
 }

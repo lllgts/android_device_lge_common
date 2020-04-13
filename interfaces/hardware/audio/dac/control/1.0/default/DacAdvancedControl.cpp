@@ -61,19 +61,12 @@ DacAdvancedControl::DacAdvancedControl() {
     for(const auto & entry : std::filesystem::directory_iterator(COMMON_ES9218_PATH)) {
         // There should only be 1 subdirectory, but check anyway
         if(entry.is_directory()) {
-            mDacBasePath = entry.path();
-            if(mDacBasePath.find("0048") != std::string::npos) {
+            if(entry.path().string().find("0048") != std::string::npos) {
+                mDacBasePath = entry.path().string();
                 break;
             }
         }
     }
-    std::string avcPath = std::string(mDacBasePath);
-    avcPath.append(AVC_VOLUME);
-    std::string hifiPath = std::string(mDacBasePath);
-    avcPath.append(HIFI_MODE);
-
-    std::ofstream avc(avcPath);
-    std::ofstream hifi(hifiPath);
     
     if(mDacBasePath.empty()) {
         LOG(ERROR) << "DacAdvancedControl: No ES9218 path found, exiting...";
@@ -81,6 +74,17 @@ DacAdvancedControl::DacAdvancedControl() {
     } else {
         LOG(INFO) << "DacAdvancedControl: mDacBasePath: " << mDacBasePath;
     }
+
+    avcPath = std::string(mDacBasePath);
+    avcPath.append(AVC_VOLUME);
+    hifiPath = std::string(mDacBasePath);
+    hifiPath.append(HIFI_MODE);
+
+    LOG(INFO) << "DacAdvancedControl: avcPath: " << avcPath;
+    LOG(INFO) << "DacAdvancedControl: hifiPath: " << hifiPath;
+
+    std::ofstream avc(avcPath);
+    std::ofstream hifi(hifiPath);
     
     if (avc) {
         LOG(INFO) << "DacAdvancedControl: add avc feature";
@@ -97,7 +101,7 @@ DacAdvancedControl::DacAdvancedControl() {
 }
 
 Return<void> DacAdvancedControl::getSupportedAdvancedFeatures(getSupportedAdvancedFeatures_cb _hidl_cb) {
-    LOG(INFO) << "DacAdvancedControl: getSupportedAdvancedFeatures: mSupportedAdvancedFeatures.size: " << std::to_string(static_cast<int32_t>(mSupportedAdvancedFeatures.size()));
+    LOG(INFO) << "DacAdvancedControl: getSupportedAdvancedFeatures: mSupportedAdvancedFeatures.size: " << std::to_string(static_cast<int32_t>(mSupportedAdvancedFeatures.size())) << " avcPath: " << avcPath << " hifiPath: " << hifiPath;
 
     _hidl_cb(mSupportedAdvancedFeatures);
 
@@ -148,12 +152,12 @@ Return<void> DacAdvancedControl::getSupportedAdvancedFeatureValues(AdvancedFeatu
 }
 
 bool DacAdvancedControl::writeAvcVolumeState(int32_t value) {
-    set(mDacBasePath + AVC_VOLUME, value);
+    set(avcPath, value);
     return (bool)property_set(PROPERTY_HIFI_DAC_AVC_VOLUME, std::to_string(value).c_str());
 }
 
 bool DacAdvancedControl::writeHifiModeState(int32_t value) {
-    set(mDacBasePath + HIFI_MODE, value);
+    set(hifiPath, value);
     return (bool)property_set(PROPERTY_HIFI_DAC_MODE, std::to_string(value).c_str());
 }
 
@@ -187,11 +191,11 @@ Return<bool> DacAdvancedControl::setFeatureValue(AdvancedFeature feature, int32_
 }
 
 int32_t DacAdvancedControl::getAvcVolumeState() {
-    return get(mDacBasePath + AVC_VOLUME, AVC_VOLUME_DEFAULT);
+    return get(avcPath, AVC_VOLUME_DEFAULT);
 }
 
 int32_t DacAdvancedControl::getHifiModeState() {
-    int32_t val = get(mDacBasePath + HIFI_MODE, HIFI_MODE_DEFAULT);
+    int32_t val = get(hifiPath, HIFI_MODE_DEFAULT);
     for(const KeyValue kv : hifi_modes) {
         if(val == std::stoi(kv.value)) {
             return val;

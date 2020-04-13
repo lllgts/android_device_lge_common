@@ -69,6 +69,9 @@ DacHalControl::DacHalControl() {
     mSupportedHalFeatures.push_back(HalFeature::QuadDAC);
     FeatureStates quaddac_fstates;
     quaddac_fstates.states = hidl_vec<KeyValue> {quaddac_states};
+    for(auto e : quaddac_fstates.states) {
+        LOG(INFO) << "quaddac_fstates: " << e.name << ":" << e.value;
+    }
     mSupportedStates.emplace(HalFeature::QuadDAC, quaddac_fstates);
 
     /* Digital Filter */
@@ -98,6 +101,12 @@ DacHalControl::DacHalControl() {
     balanceright_fstates.range.min = MIN_BALANCE_VALUE;
     balanceright_fstates.range.step = 1;
     mSupportedStates.emplace(HalFeature::BalanceRight, balanceright_fstates);
+
+    setFeatureValue(HalFeature::QuadDAC, getFeatureValue(HalFeature::QuadDAC));
+    setFeatureValue(HalFeature::DigitalFilter, getFeatureValue(HalFeature::DigitalFilter));
+    setFeatureValue(HalFeature::SoundPreset, getFeatureValue(HalFeature::SoundPreset));
+    setFeatureValue(HalFeature::BalanceLeft, getFeatureValue(HalFeature::BalanceLeft));
+    setFeatureValue(HalFeature::BalanceRight, getFeatureValue(HalFeature::BalanceRight));
 }
 
 Return<void> DacHalControl::getSupportedHalFeatures(getSupportedHalFeatures_cb _hidl_cb) {

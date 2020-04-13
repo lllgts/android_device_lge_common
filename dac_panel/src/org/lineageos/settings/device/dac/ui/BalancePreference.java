@@ -10,8 +10,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import androidx.preference.Preference;
+import androidx.preference.PreferenceFragment;
 import androidx.preference.PreferenceViewHolder;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.lineageos.settings.device.dac.R;
 import org.lineageos.settings.device.dac.utils.Constants;
@@ -102,17 +104,25 @@ public class BalancePreference extends Preference {
                 updateRightBalance(false);
             }
         });
+
+        loadBalanceConfiguration();
     }
 
     private void loadBalanceConfiguration()
     {
         try {
-            left_balance = QuadDAC.getLeftBalance(dhc);
-            right_balance = QuadDAC.getRightBalance(dhc);
+            FeatureStates states = dhc.getSupportedHalFeatureValues(HalFeature.BalanceLeft);
+            min_allowed_value = (int)states.range.min;
+            max_allowed_value = (int)states.range.max;
+
+            left_balance = -QuadDAC.getLeftBalance(dhc);
+            right_balance = -QuadDAC.getRightBalance(dhc);
         } catch(Exception e) {
             Log.d(TAG, "loadBalanceConfiguration: " + e.toString());
         }
-
+        Toast.makeText(this.getContext(), "loadBalanceConfig\nlb: "+left_balance+"\nrb: "
+                +right_balance+"\nmax: " +max_allowed_value+ "\nmin: "
+                +min_allowed_value, Toast.LENGTH_LONG).show();
         tv_left.setText(-((double)left_balance)/2 + " db");
         tv_right.setText(-((double)right_balance)/2 + " db");
 
@@ -139,6 +149,7 @@ public class BalancePreference extends Preference {
             bt_right_plus.setEnabled(true);
             bt_right_minus.setEnabled(true);
         }
+        Toast.makeText(getContext(), "loadBalanceConfiguration complete", Toast.LENGTH_SHORT);
     }
 
     private void updateLeftBalance(boolean increase)
@@ -213,19 +224,7 @@ public class BalancePreference extends Preference {
         tv_right.setText(sb.toString());
     }
 
-    public void initializeBalancePreference(IDacHalControl idhc) {
-        dhc = idhc;
-        try {
-            FeatureStates states = dhc.getSupportedHalFeatureValues(HalFeature.BalanceLeft);
-            min_allowed_value = (int)states.range.min;
-            max_allowed_value = (int)states.range.max;
-
-            Log.d(TAG, "min val: " + min_allowed_value + "; max val: " + max_allowed_value);
-
-        } catch(Exception e) {
-            Log.d(TAG, "initializeBalancePreference: " + e.toString());
-        }
-
-        loadBalanceConfiguration();
+    public void setDhc(IDacHalControl idhc) {
+        this.dhc = idhc;
     }
 }
