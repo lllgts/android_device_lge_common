@@ -1,2 +1,4 @@
 vendor_internal_prop(vendor_dac_control_prop)
 vendor_internal_prop(vendor_vibrator_prop)
+# Audio props
+type vendor_audio_prop, property_type;
